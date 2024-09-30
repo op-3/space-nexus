@@ -1,13 +1,15 @@
 <script lang="ts">
     import { createEventDispatcher } from 'svelte';
+    import { PLANET_DATA, NEARBY_GALAXIES } from '$lib/utils/constants';
   
     export let simulationSpeed: number = 1;
     export let showOrbits: boolean = true;
-    export let selectedPlanet: string | null = null;
+    export let showGalaxies: boolean = true;
+    export let selectedObject: string | null = null;
   
     const dispatch = createEventDispatcher();
   
-    const planets = ['Mercury', 'Venus', 'Earth', 'Mars', 'Jupiter', 'Saturn', 'Uranus', 'Neptune'];
+    const allObjects = [{ name: 'Sun' }, ...PLANET_DATA, ...NEARBY_GALAXIES];
   
     function updateSimulationSpeed(event: Event) {
       simulationSpeed = parseFloat((event.target as HTMLInputElement).value);
@@ -19,9 +21,14 @@
       dispatch('update', { showOrbits });
     }
   
-    function selectPlanet(event: Event) {
-      selectedPlanet = (event.target as HTMLSelectElement).value;
-      dispatch('update', { selectedPlanet });
+    function toggleGalaxies() {
+      showGalaxies = !showGalaxies;
+      dispatch('update', { showGalaxies });
+    }
+  
+    function selectObject(event: Event) {
+      selectedObject = (event.target as HTMLSelectElement).value;
+      dispatch('update', { selectedObject });
     }
   
     function resetCamera() {
@@ -30,40 +37,31 @@
   </script>
   
   <div class="control-panel">
-    <div class="control-group">
-      <label for="simulation-speed">Simulation Speed: {simulationSpeed.toFixed(2)}x</label>
-      <input 
-        type="range" 
-        id="simulation-speed" 
-        min="0.1" 
-        max="10" 
-        step="0.1" 
-        bind:value={simulationSpeed} 
-        on:input={updateSimulationSpeed}
-      />
-    </div>
-  
-    <div class="control-group">
-      <label>
-        <input type="checkbox" bind:checked={showOrbits} on:change={toggleOrbits} />
-        Show Orbits
-      </label>
-    </div>
-  
-    <div class="control-group">
-      <label for="planet-select">Focus on Planet:</label>
-      <select id="planet-select" on:change={selectPlanet} bind:value={selectedPlanet}>
+    <label>
+      Simulation Speed: {simulationSpeed.toFixed(2)}x
+      <input type="range" min="0.1" max="10" step="0.1" bind:value={simulationSpeed} on:input={updateSimulationSpeed}>
+    </label>
+    <label>
+      <input type="checkbox" bind:checked={showOrbits} on:change={toggleOrbits}>
+      Show Orbits
+    </label>
+    <label>
+      <input type="checkbox" bind:checked={showGalaxies} on:change={toggleGalaxies}>
+      Show Nearby Galaxies
+    </label>
+    <label>
+      Focus on:
+      <select on:change={selectObject} bind:value={selectedObject}>
         <option value={null}>None</option>
-        {#each planets as planet}
-          <option value={planet}>{planet}</option>
+        {#each allObjects as object}
+          <option value={object.name}>{object.name}</option>
         {/each}
       </select>
-    </div>
-  
+    </label>
     <button on:click={resetCamera}>Reset Camera</button>
   </div>
   
-  <style lang="postcss">
+  <style>
     .control-panel {
       position: absolute;
       top: 10px;
@@ -74,31 +72,18 @@
       border-radius: 5px;
       z-index: 1000;
     }
-  
-    .control-group {
+    label, button {
+      display: block;
       margin-bottom: 10px;
     }
-  
-    label {
-      display: block;
-      margin-bottom: 5px;
-    }
-  
-    input[type="range"] {
+    select, input[type="range"] {
       width: 100%;
     }
-  
-    select, button {
-      width: 100%;
-      padding: 5px;
-      margin-top: 5px;
-    }
-  
     button {
       background-color: #4CAF50;
-      color: white;
       border: none;
-      padding: 10px;
+      color: white;
+      padding: 10px 20px;
       text-align: center;
       text-decoration: none;
       display: inline-block;

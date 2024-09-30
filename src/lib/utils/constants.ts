@@ -87,3 +87,30 @@ export const SATURN_RING_DATA = {
   outerRadius: 3.5,
   texture: "saturn_rings.png",
 };
+
+export const NEARBY_GALAXIES = [
+  {
+    name: "Andromeda",
+    texture: "andromeda.jpg",
+    distance: 100000,
+    size: 50000,
+  },
+  {
+    name: "Triangulum",
+    texture: "triangulum.jpg",
+    distance: 120000,
+    size: 30000,
+  },
+  {
+    name: "Large Magellanic Cloud",
+    texture: "lmc.jpg",
+    distance: 80000,
+    size: 20000,
+  },
+  {
+    name: "Small Magellanic Cloud",
+    texture: "smc.jpg",
+    distance: 90000,
+    size: 15000,
+  },
+];
