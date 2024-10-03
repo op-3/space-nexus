@@ -1,45 +1,36 @@
 import * as THREE from "three";
-import { NEARBY_GALAXIES } from "./constants";
 
-export function createGalaxy(
-  textureLoader: THREE.TextureLoader,
-  name: string,
-  size: number,
-  distance: number,
-  texture: string
-): THREE.Mesh {
-  const geometry = new THREE.PlaneGeometry(size, size);
-  const material = new THREE.MeshBasicMaterial({
-    map: textureLoader.load(`/textures/galaxies/${texture}`),
-    side: THREE.DoubleSide,
-    transparent: true,
-    opacity: 0.8,
+const textureLoader = new THREE.TextureLoader();
+
+export function createGalaxy(galaxyData: any) {
+  const particlesGeometry = new THREE.BufferGeometry();
+  const particlesCount = 10000;
+
+  const positions = new Float32Array(particlesCount * 3);
+  const colors = new Float32Array(particlesCount * 3);
+
+  const colorInside = new THREE.Color(galaxyData.colorInside);
+  const colorOutside = new THREE.Color(galaxyData.colorOutside);
+
+  for (let i = 0; i < particlesCount; i++) {
+  }
+
+  particlesGeometry.setAttribute(
+    "position",
+    new THREE.BufferAttribute(positions, 3)
+  );
+  particlesGeometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+
+  const particlesMaterial = new THREE.PointsMaterial({
+    size: galaxyData.particleSize,
+    sizeAttenuation: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    vertexColors: true,
   });
-  const mesh = new THREE.Mesh(geometry, material);
 
-  const phi = Math.random() * Math.PI * 2;
-  const theta = Math.random() * Math.PI;
-  mesh.position.setFromSphericalCoords(distance, phi, theta);
+  const particles = new THREE.Points(particlesGeometry, particlesMaterial);
+  particles.name = galaxyData.name;
 
-  mesh.lookAt(new THREE.Vector3(0, 0, 0));
-  mesh.name = name;
-  mesh.userData = { size, distance };
-  return mesh;
-}
-
-export function createNearbyGalaxies(
-  textureLoader: THREE.TextureLoader
-): THREE.Group {
-  const galaxiesGroup = new THREE.Group();
-  NEARBY_GALAXIES.forEach((galaxy) => {
-    const galaxyMesh = createGalaxy(
-      textureLoader,
-      galaxy.name,
-      galaxy.size,
-      galaxy.distance,
-      galaxy.texture
-    );
-    galaxiesGroup.add(galaxyMesh);
-  });
-  return galaxiesGroup;
+  return particles;
 }

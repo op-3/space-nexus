@@ -25,6 +25,9 @@
 	"dependencies": {
 		"@tweenjs/tween.js": "^25.0.0",
 		"@types/three": "^0.169.0",
+		"chart.js": "^4.4.4",
+		"stats-js": "^1.0.1",
+		"stats.js": "^0.17.0",
 		"three": "^0.169.0",
 		"three-css2drenderer": "^1.0.0"
 	}

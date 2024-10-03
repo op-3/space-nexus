@@ -90,27 +90,58 @@ export const SATURN_RING_DATA = {
 
 export const NEARBY_GALAXIES = [
   {
-    name: "Andromeda",
-    texture: "andromeda.jpg",
-    distance: 100000,
-    size: 50000,
+    name: "Andromeda Galaxy",
+    radius: 100,
+    height: 10,
+    branches: 6,
+    spin: 1,
+    particleCount: 100000,
+    particleSize: 0.05,
+    colorInside: "#ff6030",
+    colorOutside: "#1b3984",
+    position: { x: 500, y: 0, z: -1000 },
   },
   {
-    name: "Triangulum",
-    texture: "triangulum.jpg",
-    distance: 120000,
-    size: 30000,
+    name: "Triangulum Galaxy",
+    radius: 80, // حجم أصغر من أندروميدا
+    height: 8,
+    branches: 3, // مجرة المثلث معروفة بأذرعها الحلزونية الثلاثة
+    spin: 1.2,
+    particleCount: 80000, // عدد أقل من الجسيمات مقارنة بأندروميدا
+    particleSize: 0.04,
+    colorInside: "#ff9d00", // لون داخلي يميل إلى البرتقالي
+    colorOutside: "#4b0082", // لون خارجي أرجواني غامق
+    position: { x: -400, y: 50, z: -800 }, // موقع مختلف عن أندروميدا
+  },
+  // يمكنك إضافة المزيد من المجرات هنا
+];
+
+export const EARTH_SATELLITES = [
+  { name: "ISS", size: 0.1, distance: 2, orbitSpeed: 0.5, color: 0xffffff },
+  {
+    name: "Hubble",
+    size: 0.05,
+    distance: 2.1,
+    orbitSpeed: 0.3,
+    color: 0xcccccc,
   },
   {
-    name: "Large Magellanic Cloud",
-    texture: "lmc.jpg",
-    distance: 80000,
-    size: 20000,
+    name: "GPS Satellite",
+    size: 0.03,
+    distance: 2.2,
+    orbitSpeed: 0.2,
+    color: 0xdddddd,
   },
+];
+
+export const SMALL_BODIES = [
+  { name: "Ceres", size: 0.5, distance: 25, orbitSpeed: 0.1, color: 0xaaaaaa },
+  { name: "Vesta", size: 0.3, distance: 26, orbitSpeed: 0.15, color: 0x999999 },
   {
-    name: "Small Magellanic Cloud",
-    texture: "smc.jpg",
-    distance: 90000,
-    size: 15000,
+    name: "Halley's Comet",
+    size: 0.2,
+    distance: 35,
+    orbitSpeed: 0.05,
+    color: 0xeeeeee,
   },
 ];
