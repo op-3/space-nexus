@@ -392,18 +392,17 @@
   }
 
   function handleControlUpdate(event: CustomEvent) {
-    const { simulationSpeed: newSpeed, showOrbits: newShowOrbits, selectedObject: newSelectedObject, showGalaxies: newShowGalaxies } = event.detail;
+    const { simulationSpeed: newSpeed, showOrbits: newShowOrbits, showGalaxies: newShowGalaxies, selectedObject: newSelectedObject } = event.detail;
     if (newSpeed !== undefined) simulationSpeed = newSpeed;
     if (newShowOrbits !== undefined) showOrbits = newShowOrbits;
+    if (newShowGalaxies !== undefined) showGalaxies = newShowGalaxies;
     if (newSelectedObject !== undefined) {
       selectedObject = newSelectedObject;
       if (selectedObject) {
         focusOnObject(selectedObject);
       }
     }
-    if (newShowGalaxies !== undefined) showGalaxies = newShowGalaxies;
   }
-
   function handleShowInfo(event: CustomEvent) {
     const { objectName } = event.detail;
     if (objectName) {
@@ -513,15 +512,15 @@
   {#if isLoading}
     <LoadingScreen progress={loadingProgress} />
   {:else}
-    <ControlPanel 
-      {simulationSpeed}
-      {showOrbits}
-      {showGalaxies}
-      selectedObject={selectedObject?.name}
-      on:update={handleControlUpdate}
-      on:showInfo={handleShowInfo}
-      on:resetCamera={resetCamera}
-    />
+  <ControlPanel 
+  {simulationSpeed}
+  {showOrbits}
+  {showGalaxies}
+  selectedObject={selectedObject?.name}
+  on:update={handleControlUpdate}
+  on:showInfo={handleShowInfo}
+  on:resetCamera={resetCamera}
+/>
     
     <InfoPanel {selectedObject} close={closeInfoPanel} />
 

@@ -83,25 +83,35 @@
         </div>
         
         <div class="flex items-center">
-          <input 
-            type="checkbox" 
-            id="orbits"
-            bind:checked={showOrbits} 
-            on:change={toggleOrbits}
-            class="w-5 h-5 text-indigo-600 bg-gray-700 rounded border-gray-600 focus:ring-indigo-500"
-          >
-          <label for="orbits" class="ml-3 text-sm font-medium">Show Orbits</label>
+          <label for="orbits" class="flex items-center cursor-pointer">
+            <input 
+              type="checkbox" 
+              id="orbits"
+              checked={showOrbits}
+              on:click={() => {
+                showOrbits = !showOrbits;
+                dispatch('update', { showOrbits });
+              }}
+              class="w-5 h-5 text-indigo-600 bg-gray-700 rounded border-gray-600 focus:ring-indigo-500 cursor-pointer"
+            >
+            <span class="ml-3 text-sm font-medium">Show Orbits</span>
+          </label>
         </div>
         
         <div class="flex items-center">
-          <input 
-            type="checkbox" 
-            id="galaxies"
-            bind:checked={showGalaxies} 
-            on:change={toggleGalaxies}
-            class="w-5 h-5 text-indigo-600 bg-gray-700 rounded border-gray-600 focus:ring-indigo-500"
-          >
-          <label for="galaxies" class="ml-3 text-sm font-medium">Show Nearby Galaxies</label>
+          <label for="galaxies" class="flex items-center cursor-pointer">
+            <input 
+              type="checkbox" 
+              id="galaxies"
+              checked={showGalaxies}
+              on:click={() => {
+                showGalaxies = !showGalaxies;
+                dispatch('update', { showGalaxies });
+              }}
+              class="w-5 h-5 text-indigo-600 bg-gray-700 rounded border-gray-600 focus:ring-indigo-500 cursor-pointer"
+            >
+            <span class="ml-3 text-sm font-medium">Show Nearby Galaxies</span>
+          </label>
         </div>
         
         <div>
