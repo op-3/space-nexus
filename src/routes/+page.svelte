@@ -9,12 +9,10 @@
   import InfoPanel from '$lib/components/InfoPanel.svelte';
   import Astronaut from '$lib/components/Astronaut.svelte';
   import ChatPanel from '$lib/components/ChatPanel.svelte';
+  import LoadingScreen from '$lib/components/LoadingScreen.svelte';
   import { getCelestialObjectInfo } from '$lib/utils/nasaApi';
 
-
-
-
-  let container: HTMLElement;
+  let containerElement: HTMLElement | null = null;
   let scene: THREE.Scene;
   let camera: THREE.PerspectiveCamera;
   let renderer: THREE.WebGLRenderer;
@@ -37,16 +35,19 @@
   let showGalaxies = true;
   let selectedObject: PlanetData | null = null;
 
-  onMount(async () => {
-    console.log('Mounting component...');
-    try {
-      await init();
-      animate();
-      window.addEventListener('resize', onWindowResize);
-    } catch (error) {
-      console.error('Error during initialization:', error);
-    }
+  let isLoading = true;
+  let loadingProgress = 0;
+  let isSceneInitialized = false;
+
+  onMount(() => {
+    console.log('Component mounted');
   });
+
+  $: if (containerElement && !isSceneInitialized) {
+    console.log('Container element available, initializing scene');
+    isSceneInitialized = true;
+    initScene();
+  }
 
   onDestroy(() => {
     console.log('Destroying component...');
@@ -60,25 +61,48 @@
     }
   });
 
+  async function initScene() {
+    try {
+      isLoading = true;
+      await init();
+      animate();
+      window.addEventListener('resize', onWindowResize);
+    } catch (error) {
+      console.error('Error during initialization:', error);
+    } finally {
+      setTimeout(() => {
+        isLoading = false;
+      }, 1000);
+    }
+  }
+
   async function init() {
+    if (!containerElement) {
+      throw new Error('Container element not found');
+    }
+
     console.log('Initializing scene...');
+    updateLoadingProgress(10);
     scene = new THREE.Scene();
     camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 10000);
     camera.position.set(0, 50, 150);
 
     console.log('Setting up renderer...');
+    updateLoadingProgress(20);
     renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
-    container.appendChild(renderer.domElement);
+    containerElement.appendChild(renderer.domElement);
 
     console.log('Setting up label renderer...');
+    updateLoadingProgress(30);
     labelRenderer = new CSS2DRenderer();
     labelRenderer.setSize(window.innerWidth, window.innerHeight);
     labelRenderer.domElement.style.position = 'absolute';
     labelRenderer.domElement.style.top = '0px';
-    container.appendChild(labelRenderer.domElement);
+    containerElement.appendChild(labelRenderer.domElement);
 
     console.log('Setting up controls...');
+    updateLoadingProgress(40);
     controls = new OrbitControls(camera, labelRenderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.05;
@@ -86,6 +110,7 @@
     controls.maxDistance = 1000;
 
     console.log('Setting up lighting...');
+    updateLoadingProgress(50);
     const ambientLight = new THREE.AmbientLight(0x404040, 7);
     scene.add(ambientLight);
 
@@ -94,13 +119,21 @@
     scene.add(pointLight);
 
     console.log('Creating solar system...');
+    updateLoadingProgress(60);
     await createSolarSystem();
     console.log('Creating galaxies...');
+    updateLoadingProgress(80);
     await createGalaxies();
     console.log('Creating background...');
+    updateLoadingProgress(90);
     createBackground();
 
     console.log('Initialization complete.');
+    updateLoadingProgress(100);
+  }
+
+  function updateLoadingProgress(progress: number) {
+    loadingProgress = progress;
   }
 
   async function createSolarSystem() {
@@ -126,9 +159,7 @@
   async function handleChatResponse(event: CustomEvent<CelestialObjectInfo>) {
     const objectInfo = event.detail;
     if (objectInfo) {
-      // تحديث العرض ثلاثي الأبعاد بناءً على المعلومات الجديدة
       updateSceneWithNewInfo(objectInfo);
-      // تحديث InfoPanel إذا كان مفتوحًا
       if (selectedObject && selectedObject.name === objectInfo.name) {
         selectedObject = { ...selectedObject, ...objectInfo };
       }
@@ -138,22 +169,17 @@
   function updateSceneWithNewInfo(objectInfo: CelestialObjectInfo) {
     const object = scene.getObjectByName(objectInfo.name);
     if (object) {
-      // تحديث حجم الكائن إذا كان ذلك ممكنًا
       if (object instanceof THREE.Mesh && objectInfo.meanRadius) {
         const scale = objectInfo.meanRadius / SUN_SIZE;
         object.scale.set(scale, scale, scale);
       }
       
-      // تحديث النص الخاص بالكائن إذا كان موجودًا
       const label = object.getObjectByName(`${objectInfo.name}-label`);
       if (label && label instanceof CSS2DObject) {
         label.element.textContent = objectInfo.name;
       }
-
-      // يمكن إضافة المزيد من التحديثات هنا (مثل تحديث النسيج، إضافة حلقات لكوكب زحل، إلخ)
     }
   }
-  
 
   async function createPlanet(planetData: PlanetData) {
     const { name, texture, size, distance } = planetData;
@@ -366,31 +392,31 @@
   }
 
   function handleControlUpdate(event: CustomEvent) {
-  const { simulationSpeed: newSpeed, showOrbits: newShowOrbits, selectedObject: newSelectedObject, showGalaxies: newShowGalaxies } = event.detail;
-  if (newSpeed !== undefined) simulationSpeed = newSpeed;
-  if (newShowOrbits !== undefined) showOrbits = newShowOrbits;
-  if (newSelectedObject !== undefined) {
-    selectedObject = newSelectedObject;
-    if (selectedObject) {
-      focusOnObject(selectedObject);
+    const { simulationSpeed: newSpeed, showOrbits: newShowOrbits, selectedObject: newSelectedObject, showGalaxies: newShowGalaxies } = event.detail;
+    if (newSpeed !== undefined) simulationSpeed = newSpeed;
+    if (newShowOrbits !== undefined) showOrbits = newShowOrbits;
+    if (newSelectedObject !== undefined) {
+      selectedObject = newSelectedObject;
+      if (selectedObject) {
+        focusOnObject(selectedObject);
+      }
+    }
+    if (newShowGalaxies !== undefined) showGalaxies = newShowGalaxies;
+  }
+
+  function handleShowInfo(event: CustomEvent) {
+    const { objectName } = event.detail;
+    if (objectName) {
+      const object = PLANET_DATA.find(p => p.name === objectName) || 
+                     NEARBY_GALAXIES.find(g => g.name === objectName) ||
+                     (objectName === 'Sun' ? { name: 'Sun', texture: 'sun.jpg' } : null);
+      if (object) {
+        selectedObject = object;
+      }
     }
   }
-  if (newShowGalaxies !== undefined) showGalaxies = newShowGalaxies;
-}
 
-function handleShowInfo(event: CustomEvent) {
-  const { objectName } = event.detail;
-  if (objectName) {
-    const object = PLANET_DATA.find(p => p.name === objectName) || 
-                   NEARBY_GALAXIES.find(g => g.name === objectName) ||
-                   (objectName === 'Sun' ? { name: 'Sun', texture: 'sun.jpg' } : null);
-    if (object) {
-      selectedObject = object;
-    }
-  }
-}
-
-function focusOnObject(objectName: string) {
+  function focusOnObject(objectName: string) {
     const object = scene.getObjectByName(objectName);
     if (object) {
       const distance = object instanceof THREE.Mesh && object.geometry.boundingSphere
@@ -416,57 +442,51 @@ function focusOnObject(objectName: string) {
   }
 
   async function handleObjectClick(event: MouseEvent) {
-  console.log("Click event triggered");
-  const raycaster = new THREE.Raycaster();
-  const mouse = new THREE.Vector2();
+    console.log("Click event triggered");
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
 
-  mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-  mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
-  raycaster.setFromCamera(mouse, camera);
+    raycaster.setFromCamera(mouse, camera);
 
-  const intersects = raycaster.intersectObjects(scene.children, true);
-  console.log("Intersects:", intersects);
+    const intersects = raycaster.intersectObjects(scene.children, true);
+    console.log("Intersects:", intersects);
 
-  if (intersects.length > 0) {
-    let object = intersects[0].object;
-    console.log("Clicked object:", object);
+    if (intersects.length > 0) {
+      let object = intersects[0].object;
+      console.log("Clicked object:", object);
 
-    // Traverse up the parent hierarchy to find a named object
-    while (object && !object.name) {
-      object = object.parent;
-    }
+      while (object && !object.name) {
+        object = object.parent;
+      }
 
-    if (object) {
-      console.log("Found named object:", object.name);
-      const planetData = PLANET_DATA.find(p => p.name === object.name);
-      const objectInfo = await getCelestialObjectInfo(object.name);
-      selectedObject = objectInfo;
-      await focusOnObject(object.name);
-
-      if (planetData) {
-        console.log("Planet data found:", planetData);
-        selectedObject = planetData;
+      if (object) {
+        console.log("Found named object:", object.name);
+        const planetData = PLANET_DATA.find(p => p.name === object.name);
+        const objectInfo = await getCelestialObjectInfo(object.name);
+        selectedObject = objectInfo;
         await focusOnObject(object.name);
-      } else {
-        const galaxyData = NEARBY_GALAXIES.find(g => g.name === object.name);
-        if (galaxyData) {
-          console.log("Galaxy data found:", galaxyData);
-          selectedObject = { ...galaxyData, texture: 'galaxy.jpg' };
+
+        if (planetData) {
+          console.log("Planet data found:", planetData);
+          selectedObject = planetData;
           await focusOnObject(object.name);
+        } else {
+          const galaxyData = NEARBY_GALAXIES.find(g => g.name === object.name);
+          if (galaxyData) {
+            console.log("Galaxy data found:", galaxyData);
+            selectedObject = { ...galaxyData, texture: 'galaxy.jpg' };
+            await focusOnObject(object.name);
+          }
         }
       }
     }
+
+    console.log("Selected object:", selectedObject);
   }
 
-  // Note: We've removed the getPlanetInfo call from here
-  // The fetching of planet info is now handled in InfoPanel.svelte
-
-  console.log("Selected object:", selectedObject);
-}
-    
-
-    
   function handleKeyDown(event: KeyboardEvent) {
     if (event.key === 'Enter' || event.key === ' ') {
       handleObjectClick(event as unknown as MouseEvent);
@@ -478,30 +498,38 @@ function focusOnObject(objectName: string) {
   }
 </script>
 
+<svelte:head>
+  <title>3D Solar System Explorer</title>
+</svelte:head>
+
 <div 
-  bind:this={container} 
+  bind:this={containerElement} 
   class="w-full h-screen overflow-hidden relative" 
   on:click={handleObjectClick}
   on:keydown={handleKeyDown}
   role="application"
   tabindex="0"
 >
-  <ControlPanel 
-    {simulationSpeed}
-    {showOrbits}
-    {showGalaxies}
-    selectedObject={selectedObject?.name}
-    on:update={handleControlUpdate}
-    on:showInfo={handleShowInfo}
-    on:resetCamera={resetCamera}
-  />
-  
-  <InfoPanel {selectedObject} close={closeInfoPanel} />
+  {#if isLoading}
+    <LoadingScreen progress={loadingProgress} />
+  {:else}
+    <ControlPanel 
+      {simulationSpeed}
+      {showOrbits}
+      {showGalaxies}
+      selectedObject={selectedObject?.name}
+      on:update={handleControlUpdate}
+      on:showInfo={handleShowInfo}
+      on:resetCamera={resetCamera}
+    />
+    
+    <InfoPanel {selectedObject} close={closeInfoPanel} />
 
-  <Astronaut toggleChat={toggleChat} />
+    <Astronaut toggleChat={toggleChat} />
 
-  {#if showChat}
-    <ChatPanel on:chatResponse={handleChatResponse} />
+    {#if showChat}
+      <ChatPanel on:chatResponse={handleChatResponse} />
+    {/if}
   {/if}
 </div>
 
