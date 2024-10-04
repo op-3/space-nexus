@@ -100,7 +100,7 @@
             <input 
               type="checkbox" 
               id="orbits"
-              bind:checked={showOrbits}
+              checked={showOrbits}
               on:change={toggleOrbits}
               class="w-5 h-5 text-indigo-600 bg-gray-700 rounded border-gray-600 focus:ring-indigo-500 cursor-pointer"
             >
@@ -113,7 +113,7 @@
             <input 
               type="checkbox" 
               id="galaxies"
-              bind:checked={showGalaxies}
+              checked={showGalaxies}
               on:change={toggleGalaxies}
               class="w-5 h-5 text-indigo-600 bg-gray-700 rounded border-gray-600 focus:ring-indigo-500 cursor-pointer"
             >
@@ -127,7 +127,7 @@
               <input 
                 type="checkbox" 
                 id="deviceControls"
-                bind:checked={useDeviceControls}
+                checked={useDeviceControls}
                 on:change={toggleDeviceControls}
                 class="w-5 h-5 text-indigo-600 bg-gray-700 rounded border-gray-600 focus:ring-indigo-500 cursor-pointer"
               >
@@ -140,7 +140,7 @@
               <input 
                 type="checkbox" 
                 id="deviceMotion"
-                bind:checked={useDeviceMotion}
+                checked={useDeviceMotion}
                 on:change={toggleDeviceMotion}
                 class="w-5 h-5 text-indigo-600 bg-gray-700 rounded border-gray-600 focus:ring-indigo-500 cursor-pointer"
               >
