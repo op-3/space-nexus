@@ -11,7 +11,7 @@
   import ChatPanel from '$lib/components/ChatPanel.svelte';
   import LoadingScreen from '$lib/components/LoadingScreen.svelte';
   import { getCelestialObjectInfo } from '$lib/utils/nasaApi';
-  import { initDeviceOrientation, deviceOrientation } from '$lib/utils/deviceOrientation';
+  import { deviceOrientation, deviceMotion, initDeviceOrientation } from '$lib/utils/deviceOrientation';
 
 
   let containerElement: HTMLElement | null = null;
@@ -27,6 +27,8 @@
 
   let useDeviceOrientation = false;
   let isMobile = false;
+  let useDeviceControls = false;
+  let lastTouchDistance = 0;
 
   const textureLoader = new THREE.TextureLoader();
   const planets: THREE.Mesh[] = [];
@@ -51,15 +53,42 @@
     }
   });
 
-  $: if (camera && controls && $deviceOrientation) {
-    if (isMobile) {
-      const { beta, gamma } = $deviceOrientation;
-      const sensitivity = 0.1;
-
-      camera.position.x += gamma * sensitivity;
-      camera.position.y += beta * sensitivity;
-      camera.lookAt(controls.target);
+  function handleTouchStart(event: TouchEvent) {
+    if (event.touches.length === 2) {
+      const touch1 = event.touches[0];
+      const touch2 = event.touches[1];
+      lastTouchDistance = Math.hypot(touch2.clientX - touch1.clientX, touch2.clientY - touch1.clientY);
     }
+  }
+
+  function handleTouchMove(event: TouchEvent) {
+    if (event.touches.length === 2) {
+      const touch1 = event.touches[0];
+      const touch2 = event.touches[1];
+      const currentDistance = Math.hypot(touch2.clientX - touch1.clientX, touch2.clientY - touch1.clientY);
+      const zoomDelta = currentDistance - lastTouchDistance;
+      
+      if (camera && controls) {
+        const zoomSpeed = 0.1;
+        camera.position.z -= zoomDelta * zoomSpeed;
+        controls.update();
+      }
+
+      lastTouchDistance = currentDistance;
+    }
+  }
+
+  $: if (camera && controls && useDeviceControls) {
+    const orientationSensitivity = 0.05;
+    const motionSensitivity = 0.1;
+
+    camera.rotation.x += ($deviceOrientation.beta - 90) * Math.PI / 180 * orientationSensitivity;
+    camera.rotation.y += -$deviceOrientation.gamma * Math.PI / 180 * orientationSensitivity;
+    
+    camera.position.x -= $deviceMotion.x * motionSensitivity;
+    camera.position.y += $deviceMotion.y * motionSensitivity;
+    
+    controls.update();
   }
 
   $: if (containerElement && !isSceneInitialized) {
@@ -424,30 +453,25 @@
       simulationSpeed: newSpeed, 
       showOrbits: newShowOrbits, 
       showGalaxies: newShowGalaxies, 
-      selectedObject: newSelectedObject,
-      useDeviceOrientation: newUseDeviceOrientation 
+      useDeviceControls: newUseDeviceControls,
+      selectedObject: newSelectedObject 
     } = event.detail;
     
     if (newSpeed !== undefined) simulationSpeed = newSpeed;
     if (newShowOrbits !== undefined) showOrbits = newShowOrbits;
     if (newShowGalaxies !== undefined) showGalaxies = newShowGalaxies;
+    if (newUseDeviceControls !== undefined) useDeviceControls = newUseDeviceControls;
     if (newSelectedObject !== undefined) {
       selectedObject = newSelectedObject;
       if (selectedObject) {
         focusOnObject(selectedObject);
       }
     }
-    if (newUseDeviceOrientation !== undefined) useDeviceOrientation = newUseDeviceOrientation;
   }
   function handleShowInfo(event: CustomEvent) {
     const { objectName } = event.detail;
     if (objectName) {
-      const object = PLANET_DATA.find(p => p.name === objectName) || 
-                     NEARBY_GALAXIES.find(g => g.name === objectName) ||
-                     (objectName === 'Sun' ? { name: 'Sun', texture: 'sun.jpg' } : null);
-      if (object) {
-        selectedObject = object;
-      }
+      selectedObject = PLANET_DATA.find(p => p.name === objectName) || null;
     }
   }
 
@@ -537,27 +561,31 @@
   <title>AstroNexuse</title>
 </svelte:head>
 
+
 <div 
   bind:this={containerElement} 
   class="w-full h-screen overflow-hidden relative" 
   on:click={handleObjectClick}
   on:keydown={handleKeyDown}
+  on:touchstart={handleTouchStart}
+  on:touchmove={handleTouchMove}
   role="application"
   tabindex="0"
 >
   {#if isLoading}
     <LoadingScreen progress={loadingProgress} />
   {:else}
-  <ControlPanel 
-  {simulationSpeed}
-  {showOrbits}
-  {showGalaxies}
-  {useDeviceOrientation}
-  selectedObject={selectedObject?.name}
-  on:update={handleControlUpdate}
-  on:showInfo={handleShowInfo}
-  on:resetCamera={resetCamera}
-/>
+    <ControlPanel 
+      {simulationSpeed}
+      {showOrbits}
+      {showGalaxies}
+      {useDeviceControls}
+      selectedObject={selectedObject?.name}
+      {isMobile}
+      on:update={handleControlUpdate}
+      on:showInfo={handleShowInfo}
+      on:resetCamera={resetCamera}
+    />
     
     <InfoPanel {selectedObject} close={closeInfoPanel} />
 

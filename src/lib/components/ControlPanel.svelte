@@ -6,7 +6,9 @@
   export let simulationSpeed: number = 1;
   export let showOrbits: boolean = true;
   export let showGalaxies: boolean = true;
+  export let useDeviceControls: boolean = false;
   export let selectedObject: string | null = null;
+  export let isMobile: boolean = false;
 
   const dispatch = createEventDispatcher();
 
@@ -27,6 +29,11 @@
   function toggleGalaxies() {
     showGalaxies = !showGalaxies;
     dispatch('update', { showGalaxies });
+  }
+
+  function toggleDeviceControls() {
+    useDeviceControls = !useDeviceControls;
+    dispatch('update', { useDeviceControls });
   }
 
   function selectObject(event: Event) {
@@ -87,11 +94,8 @@
             <input 
               type="checkbox" 
               id="orbits"
-              checked={showOrbits}
-              on:click={() => {
-                showOrbits = !showOrbits;
-                dispatch('update', { showOrbits });
-              }}
+              bind:checked={showOrbits}
+              on:change={toggleOrbits}
               class="w-5 h-5 text-indigo-600 bg-gray-700 rounded border-gray-600 focus:ring-indigo-500 cursor-pointer"
             >
             <span class="ml-3 text-sm font-medium">Show Orbits</span>
@@ -103,16 +107,28 @@
             <input 
               type="checkbox" 
               id="galaxies"
-              checked={showGalaxies}
-              on:click={() => {
-                showGalaxies = !showGalaxies;
-                dispatch('update', { showGalaxies });
-              }}
+              bind:checked={showGalaxies}
+              on:change={toggleGalaxies}
               class="w-5 h-5 text-indigo-600 bg-gray-700 rounded border-gray-600 focus:ring-indigo-500 cursor-pointer"
             >
             <span class="ml-3 text-sm font-medium">Show Nearby Galaxies</span>
           </label>
         </div>
+
+        {#if isMobile}
+          <div class="flex items-center">
+            <label for="deviceControls" class="flex items-center cursor-pointer">
+              <input 
+                type="checkbox" 
+                id="deviceControls"
+                bind:checked={useDeviceControls}
+                on:change={toggleDeviceControls}
+                class="w-5 h-5 text-indigo-600 bg-gray-700 rounded border-gray-600 focus:ring-indigo-500 cursor-pointer"
+              >
+              <span class="ml-3 text-sm font-medium">Use Device Controls</span>
+            </label>
+          </div>
+        {/if}
         
         <div>
           <label for="focus" class="block text-sm font-medium mb-2 text-indigo-200">Focus on:</label>
