@@ -13,7 +13,6 @@
   import { getCelestialObjectInfo } from '$lib/utils/nasaApi';
   import { deviceOrientation, deviceMotion, initDeviceOrientation } from '$lib/utils/deviceOrientation';
 
-
   let containerElement: HTMLElement | null = null;
   let scene: THREE.Scene;
   let camera: THREE.PerspectiveCamera;
@@ -23,13 +22,12 @@
   let animationId: number;
 
   let showChat = false;
+
   let chatPanelComponent: ChatPanel;
 
-  let useDeviceMotion = false;  
-
-  let useDeviceOrientation = false;
-  let isMobile = false;
   let useDeviceControls = false;
+  let useDeviceMotion = false;
+  let isMobile = false;
   let lastTouchDistance = 0;
 
   const textureLoader = new THREE.TextureLoader();
@@ -49,9 +47,28 @@
   let isSceneInitialized = false;
 
   onMount(() => {
+    console.log('Component mounted');
     isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     if (isMobile) {
       initDeviceOrientation();
+    }
+  });
+
+  $: if (containerElement && !isSceneInitialized) {
+    console.log('Container element available, initializing scene');
+    isSceneInitialized = true;
+    initScene();
+  }
+
+  onDestroy(() => {
+    console.log('Destroying component...');
+    cancelAnimationFrame(animationId);
+    window.removeEventListener('resize', onWindowResize);
+    if (renderer) {
+      renderer.dispose();
+    }
+    if (controls) {
+      controls.dispose();
     }
   });
 
@@ -79,37 +96,6 @@
       lastTouchDistance = currentDistance;
     }
   }
-
-  $: if (camera && controls && useDeviceControls) {
-    const orientationSensitivity = 0.05;
-    const motionSensitivity = 0.1;
-
-    camera.rotation.x += ($deviceOrientation.beta - 90) * Math.PI / 180 * orientationSensitivity;
-    camera.rotation.y += -$deviceOrientation.gamma * Math.PI / 180 * orientationSensitivity;
-    
-    camera.position.x -= $deviceMotion.x * motionSensitivity;
-    camera.position.y += $deviceMotion.y * motionSensitivity;
-    
-    controls.update();
-  }
-
-  $: if (containerElement && !isSceneInitialized) {
-    console.log('Container element available, initializing scene');
-    isSceneInitialized = true;
-    initScene();
-  }
-
-  onDestroy(() => {
-    console.log('Destroying component...');
-    cancelAnimationFrame(animationId);
-    window.removeEventListener('resize', onWindowResize);
-    if (renderer) {
-      renderer.dispose();
-    }
-    if (controls) {
-      controls.dispose();
-    }
-  });
 
   async function initScene() {
     try {
@@ -382,51 +368,42 @@
   }
 
   function animate() {
-  animationId = requestAnimationFrame(animate);
+    animationId = requestAnimationFrame(animate);
 
-  const time = performance.now() * 0.001 * simulationSpeed;
-  updatePlanets(time);
-  updateMoon(time);
-  updateGalaxies(time);
+    const time = performance.now() * 0.001 * simulationSpeed;
+    updatePlanets(time);
+    updateMoon(time);
+    updateGalaxies(time);
 
-  updateOrbitsVisibility();
-  updateGalaxiesVisibility();
-  
-  if (isMobile && camera && controls) {
-    if (useDeviceControls && $deviceOrientation) {
-      const { beta, gamma } = $deviceOrientation;
-      const sensitivity = 0.1;
+    updateOrbitsVisibility();
+    updateGalaxiesVisibility();
+    
+    if (isMobile && camera && controls) {
+      if (useDeviceControls && $deviceOrientation) {
+        const { beta, gamma } = $deviceOrientation;
+        const sensitivity = 0.1;
 
-      camera.rotation.x += (beta - 90) * Math.PI / 180 * sensitivity;
-      camera.rotation.y += -gamma * Math.PI / 180 * sensitivity;
-    }
+        camera.rotation.x += (beta - 90) * Math.PI / 180 * sensitivity;
+        camera.rotation.y += -gamma * Math.PI / 180 * sensitivity;
+      }
 
-    if (useDeviceMotion && $deviceMotion) {
-      const sensitivity = 0.1;
-      camera.position.x -= $deviceMotion.x * sensitivity;
-      camera.position.y += $deviceMotion.y * sensitivity;
-    }
+      if (useDeviceMotion && $deviceMotion) {
+        const sensitivity = 0.1;
+        camera.position.x -= $deviceMotion.x * sensitivity;
+        camera.position.y += $deviceMotion.y * sensitivity;
+      }
 
-    if (useDeviceControls || useDeviceMotion) {
-      camera.updateProjectionMatrix();
+      if (useDeviceControls || useDeviceMotion) {
+        camera.updateProjectionMatrix();
+        controls.update();
+      }
+    } else {
       controls.update();
     }
-  } else {
-    controls.update();
-  }
 
-  renderer.render(scene, camera);
-  labelRenderer.render(scene, camera);
-}
-
-function resetDeviceControls() {
-  if (camera && controls) {
-    camera.rotation.set(0, 0, 0);
-    camera.position.set(0, 50, 150);
-    controls.target.set(0, 0, 0);
-    controls.update();
+    renderer.render(scene, camera);
+    labelRenderer.render(scene, camera);
   }
-}
 
   function updatePlanets(time: number) {
     planets.forEach((planet, index) => {
@@ -472,41 +449,55 @@ function resetDeviceControls() {
   }
 
   function handleControlUpdate(event: CustomEvent) {
-  const { 
-    simulationSpeed: newSpeed, 
-    showOrbits: newShowOrbits, 
-    showGalaxies: newShowGalaxies, 
-    useDeviceControls: newUseDeviceControls,
-    useDeviceMotion: newUseDeviceMotion,
-    selectedObject: newSelectedObject 
-  } = event.detail;
-  
-  if (newSpeed !== undefined) simulationSpeed = newSpeed;
-  if (newShowOrbits !== undefined) showOrbits = newShowOrbits;
-  if (newShowGalaxies !== undefined) showGalaxies = newShowGalaxies;
-  if (newUseDeviceControls !== undefined) {
-    useDeviceControls = newUseDeviceControls;
-    if (!useDeviceControls && !useDeviceMotion) {
-      resetDeviceControls();
+    const { 
+      simulationSpeed: newSpeed, 
+      showOrbits: newShowOrbits, 
+      showGalaxies: newShowGalaxies, 
+      useDeviceControls: newUseDeviceControls,
+      useDeviceMotion: newUseDeviceMotion,
+      selectedObject: newSelectedObject 
+    } = event.detail;
+    
+    if (newSpeed !== undefined) simulationSpeed = newSpeed;
+    if (newShowOrbits !== undefined) showOrbits = newShowOrbits;
+    if (newShowGalaxies !== undefined) showGalaxies = newShowGalaxies;
+    if (newUseDeviceControls !== undefined) {
+      useDeviceControls = newUseDeviceControls;
+      if (!useDeviceControls && !useDeviceMotion) {
+        resetDeviceControls();
+      }
+    }
+    if (newUseDeviceMotion !== undefined) {
+      useDeviceMotion = newUseDeviceMotion;
+      if (!useDeviceControls && !useDeviceMotion) {
+        resetDeviceControls();
+      }
+    }
+    if (newSelectedObject !== undefined) {
+      selectedObject = newSelectedObject;
+      if (selectedObject) {
+        focusOnObject(selectedObject);
+      }
     }
   }
-  if (newUseDeviceMotion !== undefined) {
-    useDeviceMotion = newUseDeviceMotion;
-    if (!useDeviceControls && !useDeviceMotion) {
-      resetDeviceControls();
-    }
-  }
-  if (newSelectedObject !== undefined) {
-    selectedObject = newSelectedObject;
-    if (selectedObject) {
-      focusOnObject(selectedObject);
-    }
-  }
-}
   function handleShowInfo(event: CustomEvent) {
     const { objectName } = event.detail;
     if (objectName) {
-      selectedObject = PLANET_DATA.find(p => p.name === objectName) || null;
+      const object = PLANET_DATA.find(p => p.name === objectName) || 
+                     NEARBY_GALAXIES.find(g => g.name === objectName) ||
+                     (objectName === 'Sun' ? { name: 'Sun', texture: 'sun.jpg' } : null);
+      if (object) {
+        selectedObject = object;
+      }
+    }
+  }
+
+  function resetDeviceControls() {
+    if (camera && controls) {
+      camera.rotation.set(0, 0, 0);
+      camera.position.set(0, 50, 150);
+      controls.target.set(0, 0, 0);
+      controls.update();
     }
   }
 
@@ -590,11 +581,6 @@ function resetDeviceControls() {
   function closeInfoPanel() {
     selectedObject = null;
   }
-
-  function handleQuizComplete(event) {
-    // منطق التعامل مع اكتمال الاختبار
-    showQuiz = false;
-  }
 </script>
 
 <svelte:head>
@@ -627,33 +613,13 @@ function resetDeviceControls() {
       on:resetCamera={resetCamera}
     />
     
-    {#if selectedObject}
-      <InfoPanel 
-        object={selectedObject} 
-        close={closeInfoPanel} 
-      />
-    {/if}
+    <InfoPanel {selectedObject} close={closeInfoPanel} />
 
     <Astronaut toggleChat={toggleChat} />
 
     {#if showChat}
       <ChatPanel on:chatResponse={handleChatResponse} />
     {/if}
-
-    
-
-    {#if isMobile}
-      <div class="absolute bottom-4 right-4 z-50">
-        <button
-          on:click={() => showQuiz = true}
-          class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-full shadow-lg transition duration-300"
-        >
-          Start Quiz
-        </button>
-      </div>
-    {/if}
-
-   
   {/if}
 </div>
 
