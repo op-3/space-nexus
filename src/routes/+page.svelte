@@ -25,6 +25,8 @@
   let showChat = false;
   let chatPanelComponent: ChatPanel;
 
+  let useDeviceMotion = false;  
+
   let useDeviceOrientation = false;
   let isMobile = false;
   let useDeviceControls = false;
@@ -454,6 +456,7 @@
       showOrbits: newShowOrbits, 
       showGalaxies: newShowGalaxies, 
       useDeviceControls: newUseDeviceControls,
+      useDeviceMotion: newUseDeviceMotion,
       selectedObject: newSelectedObject 
     } = event.detail;
     
@@ -461,6 +464,7 @@
     if (newShowOrbits !== undefined) showOrbits = newShowOrbits;
     if (newShowGalaxies !== undefined) showGalaxies = newShowGalaxies;
     if (newUseDeviceControls !== undefined) useDeviceControls = newUseDeviceControls;
+    if (newUseDeviceMotion !== undefined) useDeviceMotion = newUseDeviceMotion;
     if (newSelectedObject !== undefined) {
       selectedObject = newSelectedObject;
       if (selectedObject) {
@@ -555,12 +559,16 @@
   function closeInfoPanel() {
     selectedObject = null;
   }
+
+  function handleQuizComplete(event) {
+    // منطق التعامل مع اكتمال الاختبار
+    showQuiz = false;
+  }
 </script>
 
 <svelte:head>
-  <title>AstroNexuse</title>
+  <title>AstroNexus</title>
 </svelte:head>
-
 
 <div 
   bind:this={containerElement} 
@@ -580,6 +588,7 @@
       {showOrbits}
       {showGalaxies}
       {useDeviceControls}
+      {useDeviceMotion}
       selectedObject={selectedObject?.name}
       {isMobile}
       on:update={handleControlUpdate}
@@ -587,13 +596,33 @@
       on:resetCamera={resetCamera}
     />
     
-    <InfoPanel {selectedObject} close={closeInfoPanel} />
+    {#if selectedObject}
+      <InfoPanel 
+        object={selectedObject} 
+        close={closeInfoPanel} 
+      />
+    {/if}
 
     <Astronaut toggleChat={toggleChat} />
 
     {#if showChat}
       <ChatPanel on:chatResponse={handleChatResponse} />
     {/if}
+
+    
+
+    {#if isMobile}
+      <div class="absolute bottom-4 right-4 z-50">
+        <button
+          on:click={() => showQuiz = true}
+          class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-full shadow-lg transition duration-300"
+        >
+          Start Quiz
+        </button>
+      </div>
+    {/if}
+
+   
   {/if}
 </div>
 

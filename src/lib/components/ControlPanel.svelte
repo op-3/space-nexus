@@ -7,6 +7,7 @@
   export let showOrbits: boolean = true;
   export let showGalaxies: boolean = true;
   export let useDeviceControls: boolean = false;
+  export let useDeviceMotion: boolean = false;
   export let selectedObject: string | null = null;
   export let isMobile: boolean = false;
 
@@ -34,6 +35,11 @@
   function toggleDeviceControls() {
     useDeviceControls = !useDeviceControls;
     dispatch('update', { useDeviceControls });
+  }
+
+  function toggleDeviceMotion() {
+    useDeviceMotion = !useDeviceMotion;
+    dispatch('update', { useDeviceMotion });
   }
 
   function selectObject(event: Event) {
@@ -126,6 +132,19 @@
                 class="w-5 h-5 text-indigo-600 bg-gray-700 rounded border-gray-600 focus:ring-indigo-500 cursor-pointer"
               >
               <span class="ml-3 text-sm font-medium">Use Device Controls</span>
+            </label>
+          </div>
+          
+          <div class="flex items-center">
+            <label for="deviceMotion" class="flex items-center cursor-pointer">
+              <input 
+                type="checkbox" 
+                id="deviceMotion"
+                bind:checked={useDeviceMotion}
+                on:change={toggleDeviceMotion}
+                class="w-5 h-5 text-indigo-600 bg-gray-700 rounded border-gray-600 focus:ring-indigo-500 cursor-pointer"
+              >
+              <span class="ml-3 text-sm font-medium">Use Device Motion</span>
             </label>
           </div>
         {/if}
