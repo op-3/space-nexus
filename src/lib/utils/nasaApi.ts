@@ -130,3 +130,30 @@ export async function getCelestialObjectInfo(
     throw new Error(`Failed to fetch info for ${objectName}: ${error.message}`);
   }
 }
+
+export async function getCelestialObjectSound(
+  objectName: string
+): Promise<string | null> {
+  try {
+    const response = await fetch(
+      `https://images-assets.nasa.gov/audio/search?q=${encodeURIComponent(
+        objectName
+      )}&media_type=audio`
+    );
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    const data = await response.json();
+
+    if (data.collection.items.length > 0) {
+      // نفترض أن أول ملف صوتي هو الأنسب
+      return data.collection.items[0].href;
+    } else {
+      console.log(`No sound found for ${objectName}`);
+      return null;
+    }
+  } catch (error) {
+    console.error(`Error fetching sound for ${objectName}:`, error);
+    return null;
+  }
+}

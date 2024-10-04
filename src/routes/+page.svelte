@@ -11,6 +11,8 @@
   import ChatPanel from '$lib/components/ChatPanel.svelte';
   import LoadingScreen from '$lib/components/LoadingScreen.svelte';
   import { getCelestialObjectInfo } from '$lib/utils/nasaApi';
+  import { initDeviceOrientation, deviceOrientation } from '$lib/utils/deviceOrientation';
+
 
   let containerElement: HTMLElement | null = null;
   let scene: THREE.Scene;
@@ -22,6 +24,9 @@
 
   let showChat = false;
   let chatPanelComponent: ChatPanel;
+
+  let useDeviceOrientation = false;
+  let isMobile = false;
 
   const textureLoader = new THREE.TextureLoader();
   const planets: THREE.Mesh[] = [];
@@ -40,8 +45,22 @@
   let isSceneInitialized = false;
 
   onMount(() => {
-    console.log('Component mounted');
+    isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    if (isMobile) {
+      initDeviceOrientation();
+    }
   });
+
+  $: if (camera && controls && $deviceOrientation) {
+    if (isMobile) {
+      const { beta, gamma } = $deviceOrientation;
+      const sensitivity = 0.1;
+
+      camera.position.x += gamma * sensitivity;
+      camera.position.y += beta * sensitivity;
+      camera.lookAt(controls.target);
+    }
+  }
 
   $: if (containerElement && !isSceneInitialized) {
     console.log('Container element available, initializing scene');
@@ -332,21 +351,30 @@
   }
 
   function animate() {
-    animationId = requestAnimationFrame(animate);
+  animationId = requestAnimationFrame(animate);
 
-    const time = performance.now() * 0.001 * simulationSpeed;
-    updatePlanets(time);
-    updateMoon(time);
-    updateGalaxies(time);
+  const time = performance.now() * 0.001 * simulationSpeed;
+  updatePlanets(time);
+  updateMoon(time);
+  updateGalaxies(time);
 
-    updateOrbitsVisibility();
-    updateGalaxiesVisibility();
-    
-    controls.update();
+  updateOrbitsVisibility();
+  updateGalaxiesVisibility();
+  
+  if (isMobile && camera && controls && $deviceOrientation) {
+    const { beta, gamma } = $deviceOrientation;
+    const sensitivity = 0.1;
 
-    renderer.render(scene, camera);
-    labelRenderer.render(scene, camera);
+    camera.position.x += gamma * sensitivity;
+    camera.position.y += beta * sensitivity;
+    camera.lookAt(controls.target);
   }
+
+  controls.update();
+
+  renderer.render(scene, camera);
+  labelRenderer.render(scene, camera);
+}
 
   function updatePlanets(time: number) {
     planets.forEach((planet, index) => {
@@ -392,7 +420,14 @@
   }
 
   function handleControlUpdate(event: CustomEvent) {
-    const { simulationSpeed: newSpeed, showOrbits: newShowOrbits, showGalaxies: newShowGalaxies, selectedObject: newSelectedObject } = event.detail;
+    const { 
+      simulationSpeed: newSpeed, 
+      showOrbits: newShowOrbits, 
+      showGalaxies: newShowGalaxies, 
+      selectedObject: newSelectedObject,
+      useDeviceOrientation: newUseDeviceOrientation 
+    } = event.detail;
+    
     if (newSpeed !== undefined) simulationSpeed = newSpeed;
     if (newShowOrbits !== undefined) showOrbits = newShowOrbits;
     if (newShowGalaxies !== undefined) showGalaxies = newShowGalaxies;
@@ -402,6 +437,7 @@
         focusOnObject(selectedObject);
       }
     }
+    if (newUseDeviceOrientation !== undefined) useDeviceOrientation = newUseDeviceOrientation;
   }
   function handleShowInfo(event: CustomEvent) {
     const { objectName } = event.detail;
@@ -498,7 +534,7 @@
 </script>
 
 <svelte:head>
-  <title>3D Solar System Explorer</title>
+  <title>AstroNexuse</title>
 </svelte:head>
 
 <div 
@@ -516,6 +552,7 @@
   {simulationSpeed}
   {showOrbits}
   {showGalaxies}
+  {useDeviceOrientation}
   selectedObject={selectedObject?.name}
   on:update={handleControlUpdate}
   on:showInfo={handleShowInfo}
