@@ -392,19 +392,40 @@
   updateOrbitsVisibility();
   updateGalaxiesVisibility();
   
-  if (isMobile && camera && controls && $deviceOrientation) {
-    const { beta, gamma } = $deviceOrientation;
-    const sensitivity = 0.1;
+  if (isMobile && camera && controls) {
+    if (useDeviceControls && $deviceOrientation) {
+      const { beta, gamma } = $deviceOrientation;
+      const sensitivity = 0.1;
 
-    camera.position.x += gamma * sensitivity;
-    camera.position.y += beta * sensitivity;
-    camera.lookAt(controls.target);
+      camera.rotation.x += (beta - 90) * Math.PI / 180 * sensitivity;
+      camera.rotation.y += -gamma * Math.PI / 180 * sensitivity;
+    }
+
+    if (useDeviceMotion && $deviceMotion) {
+      const sensitivity = 0.1;
+      camera.position.x -= $deviceMotion.x * sensitivity;
+      camera.position.y += $deviceMotion.y * sensitivity;
+    }
+
+    if (useDeviceControls || useDeviceMotion) {
+      camera.updateProjectionMatrix();
+      controls.update();
+    }
+  } else {
+    controls.update();
   }
-
-  controls.update();
 
   renderer.render(scene, camera);
   labelRenderer.render(scene, camera);
+}
+
+function resetDeviceControls() {
+  if (camera && controls) {
+    camera.rotation.set(0, 0, 0);
+    camera.position.set(0, 50, 150);
+    controls.target.set(0, 0, 0);
+    controls.update();
+  }
 }
 
   function updatePlanets(time: number) {
@@ -451,27 +472,37 @@
   }
 
   function handleControlUpdate(event: CustomEvent) {
-    const { 
-      simulationSpeed: newSpeed, 
-      showOrbits: newShowOrbits, 
-      showGalaxies: newShowGalaxies, 
-      useDeviceControls: newUseDeviceControls,
-      useDeviceMotion: newUseDeviceMotion,
-      selectedObject: newSelectedObject 
-    } = event.detail;
-    
-    if (newSpeed !== undefined) simulationSpeed = newSpeed;
-    if (newShowOrbits !== undefined) showOrbits = newShowOrbits;
-    if (newShowGalaxies !== undefined) showGalaxies = newShowGalaxies;
-    if (newUseDeviceControls !== undefined) useDeviceControls = newUseDeviceControls;
-    if (newUseDeviceMotion !== undefined) useDeviceMotion = newUseDeviceMotion;
-    if (newSelectedObject !== undefined) {
-      selectedObject = newSelectedObject;
-      if (selectedObject) {
-        focusOnObject(selectedObject);
-      }
+  const { 
+    simulationSpeed: newSpeed, 
+    showOrbits: newShowOrbits, 
+    showGalaxies: newShowGalaxies, 
+    useDeviceControls: newUseDeviceControls,
+    useDeviceMotion: newUseDeviceMotion,
+    selectedObject: newSelectedObject 
+  } = event.detail;
+  
+  if (newSpeed !== undefined) simulationSpeed = newSpeed;
+  if (newShowOrbits !== undefined) showOrbits = newShowOrbits;
+  if (newShowGalaxies !== undefined) showGalaxies = newShowGalaxies;
+  if (newUseDeviceControls !== undefined) {
+    useDeviceControls = newUseDeviceControls;
+    if (!useDeviceControls && !useDeviceMotion) {
+      resetDeviceControls();
     }
   }
+  if (newUseDeviceMotion !== undefined) {
+    useDeviceMotion = newUseDeviceMotion;
+    if (!useDeviceControls && !useDeviceMotion) {
+      resetDeviceControls();
+    }
+  }
+  if (newSelectedObject !== undefined) {
+    selectedObject = newSelectedObject;
+    if (selectedObject) {
+      focusOnObject(selectedObject);
+    }
+  }
+}
   function handleShowInfo(event: CustomEvent) {
     const { objectName } = event.detail;
     if (objectName) {
