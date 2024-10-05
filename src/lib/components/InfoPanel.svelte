@@ -94,6 +94,7 @@
                   <span class="text-2xl font-light">No image available</span>
                 </div>
               {/if}
+              <p class="text-lg leading-relaxed font-light">Facts : </p>
               <p class="text-lg leading-relaxed font-light">{objectInfo.description}</p>
             </div>
             
