@@ -168,21 +168,21 @@
 
 <div bind:this={container} class="w-full h-screen bg-black overflow-hidden relative">
   {#if loaded}
-    <div class="absolute inset-0 flex flex-col justify-between p-8 text-white z-10">
-      <header class="flex justify-between items-center">
-        <h1 class="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-600">
+    <div class="absolute inset-0 flex flex-col justify-between p-4 sm:p-6 md:p-8 text-white z-10">
+      <header class="flex flex-col sm:flex-row justify-between items-center space-y-4 sm:space-y-0">
+        <h1 class="text-3xl sm:text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-600">
           AstroNexus
         </h1>
-        <div class="flex space-x-4">
+        <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
           <button
             on:click={navigateToSpace}
-            class="px-6 py-2 bg-gradient-to-r from-purple-600 to-blue-600 rounded-full hover:from-purple-700 hover:to-blue-700 transition duration-300 transform hover:scale-105"
+            class="px-4 sm:px-6 py-2 bg-gradient-to-r from-purple-600 to-blue-600 rounded-full hover:from-purple-700 hover:to-blue-700 transition duration-300 transform hover:scale-105 text-sm sm:text-base"
           >
             Begin Journey
           </button>
           <button
             on:click={navigateToNasaGallery}
-            class="px-6 py-2 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full hover:from-blue-700 hover:to-purple-700 transition duration-300 transform hover:scale-105"
+            class="px-4 sm:px-6 py-2 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full hover:from-blue-700 hover:to-purple-700 transition duration-300 transform hover:scale-105 text-sm sm:text-base"
           >
             NASA Gallery
           </button>
@@ -190,28 +190,28 @@
       </header>
 
       <main class="flex-grow flex items-center justify-center">
-        <div class="text-center max-w-3xl mx-auto">
-          <h2 class="text-6xl font-bold mb-4 leading-tight">
+        <div class="text-center max-w-xs sm:max-w-sm md:max-w-2xl lg:max-w-3xl mx-auto">
+          <h2 class="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-2 sm:mb-4 leading-tight">
             {sections[currentSection].title}
           </h2>
-          <p class="text-xl mb-8 opacity-80">
+          <p class="text-base sm:text-lg md:text-xl mb-4 sm:mb-6 md:mb-8 opacity-80">
             {sections[currentSection].subtitle}
           </p>
           <button
             on:click={nextSection}
-            class="px-8 py-3 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full hover:from-blue-600 hover:to-purple-600 transition duration-300 transform hover:scale-105"
+            class="px-6 sm:px-8 py-2 sm:py-3 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full hover:from-blue-600 hover:to-purple-600 transition duration-300 transform hover:scale-105 text-sm sm:text-base"
           >
             Discover More
           </button>
         </div>
       </main>
 
-      <footer class="text-center text-sm opacity-60">
+      <footer class="text-center text-xs sm:text-sm opacity-60">
         © 2024 AstroNexus. Venturing into the unknown.
       </footer>
     </div>
     
-    <div class="absolute bottom-0 left-0 w-full h-2 bg-gradient-to-r from-blue-500 to-purple-500">
+    <div class="absolute bottom-0 left-0 w-full h-1 sm:h-2 bg-gradient-to-r from-blue-500 to-purple-500">
       <div class="h-full bg-white" style="width: {$progress * 100}%;"></div>
     </div>
   {/if}
