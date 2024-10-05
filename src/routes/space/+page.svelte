@@ -12,7 +12,9 @@
   import LoadingScreen from '$lib/components/LoadingScreen.svelte';
   import { getCelestialObjectInfo } from '$lib/utils/nasaApi';
   import { deviceOrientation, deviceMotion, initDeviceOrientation } from '$lib/utils/deviceOrientation';
+  import { calculatePlanetPositions } from '$lib/utils/planetPositions';
 
+  let isPlanetsMoving = true;
   let containerElement: HTMLElement | null = null;
   let scene: THREE.Scene;
   let camera: THREE.PerspectiveCamera;
@@ -21,9 +23,14 @@
   let controls: OrbitControls;
   let animationId: number;
 
+  
+
   let showChat = false;
+  
 
   let chatPanelComponent: ChatPanel;
+
+  let selectedDate: string = new Date().toISOString().split('T')[0];
 
   let useDeviceControls = false;
   let useDeviceMotion = false;
@@ -368,51 +375,65 @@
   }
 
   function animate() {
-    animationId = requestAnimationFrame(animate);
+  animationId = requestAnimationFrame(animate);
 
-    const time = performance.now() * 0.001 * simulationSpeed;
+  const time = performance.now() * 0.001 * simulationSpeed;
+
+  console.log("animate - isPlanetsMoving:", isPlanetsMoving, "selectedDate:", selectedDate, "time:", time.toFixed(2));
+
+  if (isPlanetsMoving && !selectedDate) {
+    console.log("Updating planets");
     updatePlanets(time);
-    updateMoon(time);
-    updateGalaxies(time);
+  } else {
+    console.log("Not updating planets");
+  }
 
-    updateOrbitsVisibility();
-    updateGalaxiesVisibility();
-    
-    if (isMobile && camera && controls) {
-      if (useDeviceControls && $deviceOrientation) {
-        const { beta, gamma } = $deviceOrientation;
-        const sensitivity = 0.1;
+  updateMoon(time);
+  updateGalaxies(time);
 
-        camera.rotation.x += (beta - 90) * Math.PI / 180 * sensitivity;
-        camera.rotation.y += -gamma * Math.PI / 180 * sensitivity;
-      }
+  updateOrbitsVisibility();
+  updateGalaxiesVisibility();
+  
+  if (isMobile && camera && controls) {
+    if (useDeviceControls && $deviceOrientation) {
+      const { beta, gamma } = $deviceOrientation;
+      const sensitivity = 0.1;
 
-      if (useDeviceMotion && $deviceMotion) {
-        const sensitivity = 0.1;
-        camera.position.x -= $deviceMotion.x * sensitivity;
-        camera.position.y += $deviceMotion.y * sensitivity;
-      }
-
-      if (useDeviceControls || useDeviceMotion) {
-        camera.updateProjectionMatrix();
-        controls.update();
-      }
-    } else {
-      controls.update();
+      camera.rotation.x += (beta - 90) * Math.PI / 180 * sensitivity;
+      camera.rotation.y += -gamma * Math.PI / 180 * sensitivity;
     }
 
-    renderer.render(scene, camera);
-    labelRenderer.render(scene, camera);
+    if (useDeviceMotion && $deviceMotion) {
+      const sensitivity = 0.1;
+      camera.position.x -= $deviceMotion.x * sensitivity;
+      camera.position.y += $deviceMotion.y * sensitivity;
+    }
+
+    if (useDeviceControls || useDeviceMotion) {
+      camera.updateProjectionMatrix();
+      controls.update();
+    }
+  } else {
+    controls.update();
   }
 
-  function updatePlanets(time: number) {
-    planets.forEach((planet, index) => {
-      const { distance, rotationSpeed, orbitSpeed } = PLANET_DATA[index];
-      planet.rotation.y += rotationSpeed * simulationSpeed;
-      planet.position.x = Math.cos(time * orbitSpeed) * distance;
-      planet.position.z = Math.sin(time * orbitSpeed) * distance;
-    });
-  }
+  renderer.render(scene, camera);
+  labelRenderer.render(scene, camera);
+}
+
+function updatePlanets(time: number) {
+  console.log("updatePlanets called with time:", time.toFixed(2));
+  planets.forEach((planet, index) => {
+    const { name, distance, rotationSpeed, orbitSpeed } = PLANET_DATA[index];
+    planet.rotation.y += rotationSpeed * simulationSpeed;
+    
+    planet.userData.orbitAngle = (planet.userData.orbitAngle || 0) + orbitSpeed * simulationSpeed;
+    planet.position.x = Math.cos(planet.userData.orbitAngle) * distance;
+    planet.position.z = Math.sin(planet.userData.orbitAngle) * distance;
+    
+    console.log(`Updated ${name} - position:`, planet.position.x.toFixed(2), planet.position.z.toFixed(2));
+  });
+}
 
   function updateMoon(time: number) {
     const { distance, orbitSpeed } = MOON_DATA;
@@ -449,14 +470,23 @@
   }
 
   function handleControlUpdate(event: CustomEvent) {
-    const { 
-      simulationSpeed: newSpeed, 
-      showOrbits: newShowOrbits, 
-      showGalaxies: newShowGalaxies, 
-      useDeviceControls: newUseDeviceControls,
-      useDeviceMotion: newUseDeviceMotion,
-      selectedObject: newSelectedObject 
-    } = event.detail;
+  console.log("handleControlUpdate called with:", event.detail);
+  
+  const { 
+    simulationSpeed: newSpeed, 
+    showOrbits: newShowOrbits, 
+    showGalaxies: newShowGalaxies, 
+    useDeviceControls: newUseDeviceControls,
+    useDeviceMotion: newUseDeviceMotion,
+    selectedObject: newSelectedObject,
+    selectedDate: newSelectedDate,
+    isPlanetsMoving: newIsPlanetsMoving
+  } = event.detail;
+  
+  if (newIsPlanetsMoving !== undefined) {
+    isPlanetsMoving = newIsPlanetsMoving;
+    console.log("Main component - isPlanetsMoving updated to:", isPlanetsMoving);
+  }
     
     if (newSpeed !== undefined) simulationSpeed = newSpeed;
     if (newShowOrbits !== undefined) showOrbits = newShowOrbits;
@@ -479,7 +509,50 @@
         focusOnObject(selectedObject);
       }
     }
+    if (newSelectedDate !== undefined) {
+      selectedDate = newSelectedDate;
+    console.log("New selected date:", selectedDate);
+    updatePlanetPositionsForDate(new Date(selectedDate));
+    
+    // Stop continuous planet movement
+    planets.forEach(planet => {
+      planet.userData.orbitAngle = 0;
+    });
+    if (event.detail.selectedDate === null) {
+    selectedDate = null;
+    planets.forEach(planet => {
+      planet.userData.orbitAngle = 0;
+    });
   }
+}
+  }
+
+  function updatePlanetPositionsForDate(date: Date) {
+  console.log("Updating planet positions for date:", date);
+  console.log("isPlanetsMoving before update:", isPlanetsMoving);
+  
+  const positions = calculatePlanetPositions(date);
+  positions.forEach(pos => {
+    const planet = scene.getObjectByName(pos.name);
+    if (planet && planet instanceof THREE.Object3D) {
+      console.log(`Updating position for ${pos.name}:`, pos.x, pos.z);
+      planet.position.set(pos.x, 0, pos.z);
+    }
+  });
+  
+  //isPlanetsMoving = false;
+  console.log("isPlanetsMoving after update:", isPlanetsMoving);
+
+  // Force a single render to update the scene
+  renderer.render(scene, camera);
+  labelRenderer.render(scene, camera);
+}
+
+function resetPlanetMovement() {
+  selectedDate = null;
+  isPlanetsMoving = true;
+  console.log("Reset planet movement - isPlanetsMoving:", isPlanetsMoving, "selectedDate:", selectedDate);
+}
   function handleShowInfo(event: CustomEvent) {
     const { objectName } = event.detail;
     if (objectName) {
@@ -489,7 +562,10 @@
       if (object) {
         selectedObject = object;
       }
+      
     }
+    
+    
   }
 
   function resetDeviceControls() {
@@ -600,18 +676,21 @@
   {#if isLoading}
     <LoadingScreen progress={loadingProgress} />
   {:else}
-    <ControlPanel 
-      {simulationSpeed}
-      {showOrbits}
-      {showGalaxies}
-      {useDeviceControls}
-      {useDeviceMotion}
-      selectedObject={selectedObject?.name}
-      {isMobile}
-      on:update={handleControlUpdate}
-      on:showInfo={handleShowInfo}
-      on:resetCamera={resetCamera}
-    />
+  <ControlPanel 
+  {simulationSpeed}
+  {showOrbits}
+  {showGalaxies}
+  {useDeviceControls}
+  {useDeviceMotion}
+  selectedObject={selectedObject?.name}
+  {isMobile}
+  {selectedDate}
+  {isPlanetsMoving}
+  on:update={handleControlUpdate}
+  on:showInfo={handleShowInfo}
+  on:resetCamera={resetCamera}
+  on:resetPlanetMovement={resetPlanetMovement}
+/>
     
     <InfoPanel {selectedObject} close={closeInfoPanel} />
 
@@ -620,8 +699,11 @@
     {#if showChat}
       <ChatPanel on:chatResponse={handleChatResponse} />
     {/if}
+
+    
   {/if}
 </div>
+
 
 <style lang="postcss">
   :global(body) {

@@ -1,12 +1,21 @@
 // $lib/utils/orbitalMechanics.ts
 
-interface OrbitalElements {
+// تعريف واجهة الكوكب
+export interface Planet {
+  name: string;
+  texture: string;
   a: number; // شبه المحور الأكبر (بوحدات الوحدة الفلكية)
   e: number; // اللامركزية
   i: number; // الميل (بالدرجات)
   L: number; // الطول المتوسط (بالدرجات)
   wbar: number; // طول الحضيض (بالدرجات)
   O: number; // طول العقدة الصاعدة (بالدرجات)
+  aRate: number; // معدل تغير شبه المحور الأكبر
+  eRate: number; // معدل تغير اللامركزية
+  iRate: number; // معدل تغير الميل
+  LRate: number; // معدل تغير الطول المتوسط
+  wbarRate: number; // معدل تغير طول الحضيض
+  ORate: number; // معدل تغير طول العقدة الصاعدة
 }
 
 const J2000 = new Date("2000-01-01T12:00:00Z").getTime();
@@ -17,68 +26,96 @@ function degToRad(deg: number): number {
   return (deg * Math.PI) / 180;
 }
 
-function getCurrentCentury(): number {
-  return (Date.now() - J2000) / CENTURY;
+function radToDeg(rad: number): number {
+  return (rad * 180) / Math.PI;
 }
 
-function calculateOrbitalElements(
-  T: number,
-  planet: OrbitalElements
-): OrbitalElements {
-  const { a, e, i, L, wbar, O } = planet;
+function normalizeAngle(angle: number): number {
+  return angle - Math.floor(angle / 360) * 360;
+}
+
+function calculateOrbitalElements(T: number, planet: Planet): Planet {
   return {
-    a: a + planet.aRate * T,
-    e: e + planet.eRate * T,
-    i: i + planet.iRate * T,
-    L: (L + planet.LRate * T) % 360,
-    wbar: (wbar + planet.wbarRate * T) % 360,
-    O: (O + planet.ORate * T) % 360,
+    ...planet,
+    a: planet.a + planet.aRate * T,
+    e: planet.e + planet.eRate * T,
+    i: normalizeAngle(planet.i + planet.iRate * T),
+    L: normalizeAngle(planet.L + planet.LRate * T),
+    wbar: normalizeAngle(planet.wbar + planet.wbarRate * T),
+    O: normalizeAngle(planet.O + planet.ORate * T),
   };
-}
-
-function calculatePosition(
-  elements: OrbitalElements
-): [number, number, number] {
-  const { a, e, i, L, wbar, O } = elements;
-  const M = degToRad(L - wbar);
-  const E = solveKeplerEquation(M, e);
-
-  const x = a * (Math.cos(E) - e);
-  const y = a * Math.sqrt(1 - e * e) * Math.sin(E);
-
-  const xEcliptic =
-    (Math.cos(O) * Math.cos(wbar - O) -
-      Math.sin(O) * Math.sin(wbar - O) * Math.cos(i)) *
-      x +
-    (-Math.cos(O) * Math.sin(wbar - O) -
-      Math.sin(O) * Math.cos(wbar - O) * Math.cos(i)) *
-      y;
-  const yEcliptic =
-    (Math.sin(O) * Math.cos(wbar - O) +
-      Math.cos(O) * Math.sin(wbar - O) * Math.cos(i)) *
-      x +
-    (-Math.sin(O) * Math.sin(wbar - O) +
-      Math.cos(O) * Math.cos(wbar - O) * Math.cos(i)) *
-      y;
-  const zEcliptic =
-    Math.sin(i) * Math.sin(wbar - O) * x + Math.sin(i) * Math.cos(wbar - O) * y;
-
-  return [xEcliptic, yEcliptic, zEcliptic];
 }
 
 function solveKeplerEquation(M: number, e: number): number {
   let E = M;
-  for (let i = 0; i < 10; i++) {
-    E = M + e * Math.sin(E);
+  const maxIterations = 30;
+  const epsilon = 1e-6;
+  for (let i = 0; i < maxIterations; i++) {
+    const deltaE = (E - e * Math.sin(E) - M) / (1 - e * Math.cos(E));
+    E -= deltaE;
+    if (Math.abs(deltaE) < epsilon) break;
   }
   return E;
 }
 
-export function getPlanetPosition(
-  planet: OrbitalElements,
-  time: number
+export function calculatePlanetPosition(
+  planet: Planet,
+  date: Date
 ): [number, number, number] {
-  const T = time / (36525 * 86400); // تحويل الوقت إلى قرون يوليان
-  const currentElements = calculateOrbitalElements(T, planet);
-  return calculatePosition(currentElements);
+  const T = (date.getTime() - J2000) / CENTURY;
+  const updatedPlanet = calculateOrbitalElements(T, planet);
+
+  const { a, e, i, L, wbar, O } = updatedPlanet;
+  const M = degToRad(normalizeAngle(L - wbar));
+  const E = solveKeplerEquation(M, e);
+
+  const xPrime = a * (Math.cos(E) - e);
+  const yPrime = a * Math.sqrt(1 - e * e) * Math.sin(E);
+
+  const cosO = Math.cos(degToRad(O));
+  const sinO = Math.sin(degToRad(O));
+  const cosi = Math.cos(degToRad(i));
+  const sini = Math.sin(degToRad(i));
+  const cosw = Math.cos(degToRad(wbar - O));
+  const sinw = Math.sin(degToRad(wbar - O));
+
+  const x =
+    (cosO * cosw - sinO * sinw * cosi) * xPrime +
+    (-cosO * sinw - sinO * cosw * cosi) * yPrime;
+  const y =
+    (sinO * cosw + cosO * sinw * cosi) * xPrime +
+    (-sinO * sinw + cosO * cosw * cosi) * yPrime;
+  const z = sinw * sini * xPrime + cosw * sini * yPrime;
+
+  // تحقق من القيم قبل إرجاعها
+  if (isNaN(x) || isNaN(y) || isNaN(z)) {
+    console.error("NaN values detected in planet position calculation", {
+      planet,
+      date,
+      x,
+      y,
+      z,
+    });
+    return [0, 0, 0]; // قيمة افتراضية آمنة
+  }
+
+  return [x, y, z];
+}
+
+export function calculatePlanetVelocity(
+  planet: Planet,
+  date: Date
+): [number, number, number] {
+  // يمكن إضافة حساب السرعة هنا إذا كنت بحاجة إليها
+  // هذه الوظيفة ستكون مفيدة لحساب اتجاه حركة الكوكب
+  return [0, 0, 0]; // قيمة مؤقتة
+}
+
+export function getOrbitalPeriod(planet: Planet): number {
+  // حساب الفترة المدارية بالأيام
+  return 365.25 * Math.sqrt(Math.pow(planet.a, 3));
+}
+
+export function getCurrentCentury(): number {
+  return (Date.now() - J2000) / CENTURY;
 }

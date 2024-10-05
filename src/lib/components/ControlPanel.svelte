@@ -2,6 +2,7 @@
   import { createEventDispatcher } from 'svelte';
   import { PLANET_DATA, NEARBY_GALAXIES } from '$lib/utils/constants';
   import { fade, fly } from 'svelte/transition';
+  
 
   export let simulationSpeed: number = 1;
   export let showOrbits: boolean = true;
@@ -10,10 +11,17 @@
   export let useDeviceMotion: boolean = false;
   export let selectedObject: string | null = null;
   export let isMobile: boolean = false;
+  export let selectedDate: string = new Date().toISOString().split('T')[0];
+
+  export let isPlanetsMoving: boolean;
+
+  
 
   const dispatch = createEventDispatcher();
 
   const allObjects = [{ name: 'Sun' }, ...PLANET_DATA, ...NEARBY_GALAXIES];
+
+  
 
   let isExpanded = false;
 
@@ -55,6 +63,28 @@
   function toggleExpand() {
     isExpanded = !isExpanded;
   }
+
+  function updateDate(event: Event) {
+    const inputDate = (event.target as HTMLInputElement).value;
+    selectedDate = inputDate;
+    dispatch('update', { selectedDate: new Date(inputDate) });
+  }
+  function formatDate(date: Date): string {
+    return date.toISOString().split('T')[0];
+  }
+  // function resetPlanetMovement() {
+  //   dispatch('resetPlanetMovement');
+  // }
+
+  function togglePlanetMovement() {
+  isPlanetsMoving = !isPlanetsMoving;
+  if (isPlanetsMoving) {
+    dispatch('update', { isPlanetsMoving, selectedDate: null });
+  } else {
+    dispatch('update', { isPlanetsMoving });
+  }
+  console.log("ControlPanel - isPlanetsMoving toggled to:", isPlanetsMoving);
+}
 </script>
 
 <div 
@@ -149,6 +179,7 @@
           </div>
         {/if}
         
+        
         <div>
           <label for="focus" class="block text-sm font-medium mb-2 text-indigo-200">Focus on:</label>
           <select 
@@ -163,6 +194,35 @@
             {/each}
           </select>
         </div>
+        <div>
+          <label for="date" class="block text-sm font-medium mb-2 text-indigo-200">View positions on:</label>
+          <input 
+            type="date" 
+            id="date"
+            bind:value={selectedDate}
+            on:change={updateDate}
+            class="bg-gray-800 text-white text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2.5"
+          >
+
+        </div>
+        
+        <div class="flex items-center">
+          <button 
+  on:click={togglePlanetMovement}
+  class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300 flex items-center justify-center space-x-2"
+>
+  <span>{isPlanetsMoving ? 'Stop' : 'Start'} Planet Movement</span>
+</button>
+<!-- <button 
+  on:click={resetPlanetMovement}
+  class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300 flex items-center justify-center space-x-2 mt-2"
+>
+  <span>Reset Planet Movement</span>
+</button> -->
+        </div>
+        
+        
+
         
         <button 
           on:click={resetCamera}

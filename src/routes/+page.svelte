@@ -7,6 +7,7 @@
   import { goto } from '$app/navigation';
   import { tweened } from 'svelte/motion';
   import { cubicOut } from 'svelte/easing';
+  
 
   let container: HTMLElement;
   let scene: THREE.Scene;
