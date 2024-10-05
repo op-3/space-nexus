@@ -1,7 +1,7 @@
 // nasaApi.ts
 import type { CelestialObjectInfo } from "$lib/types/celestialObject";
 
-const NASA_API_KEY = "DvhmOY5moOcSEdaaZmdAotce7mNBq1EfPgUGRh8k";
+const NASA_API_BASE = "https://images-api.nasa.gov";
 
 const objectData: { [key: string]: Partial<CelestialObjectInfo> } = {
   Mercury: {
@@ -94,22 +94,43 @@ const objectData: { [key: string]: Partial<CelestialObjectInfo> } = {
   },
 };
 
+async function fetchWithErrorHandling(url: string): Promise<any> {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`HTTP error! status: ${response.status}`);
+  }
+  return response.json();
+}
+
 export async function getCelestialObjectInfo(
-  objectName: string
+  objectName: string,
+  page: number = 1,
+  pageSize: number = 50
 ): Promise<CelestialObjectInfo> {
   try {
-    const response = await fetch(
-      `https://images-api.nasa.gov/search?q=${encodeURIComponent(
-        objectName
-      )}&media_type=image`
+    const searchUrl = `${NASA_API_BASE}/search?q=${encodeURIComponent(
+      objectName
+    )}&media_type=image&keywords=${encodeURIComponent(
+      objectName
+    )}&description=${encodeURIComponent(
+      objectName
+    )}&page=${page}&page_size=${pageSize}`;
+    const data = await fetchWithErrorHandling(searchUrl);
+
+    const images = await Promise.all(
+      data.collection.items.map(async (item) => {
+        const assetData = await fetchWithErrorHandling(
+          `${NASA_API_BASE}/asset/${item.data[0].nasa_id}`
+        );
+        return (
+          assetData.collection.items.find(
+            (asset) =>
+              asset.href.endsWith("~orig.jpg") ||
+              asset.href.endsWith("~large.jpg")
+          )?.href || item.links[0].href
+        );
+      })
     );
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    const data = await response.json();
-    const images = data.collection.items
-      .slice(0, 5)
-      .map((item) => item.links[0].href);
 
     const staticData = objectData[objectName] || {};
 
@@ -122,8 +143,12 @@ export async function getCelestialObjectInfo(
       sideralOrbit: staticData.sideralOrbit || 0,
       sideralRotation: staticData.sideralRotation || 0,
       moons: staticData.moons || 0,
-      description: staticData.description || "No description available.",
+      description:
+        staticData.description ||
+        data.collection.items[0]?.data[0]?.description ||
+        "No description available.",
       images: images,
+      totalHits: data.collection.metadata.total_hits,
     };
   } catch (error) {
     console.error("Error fetching celestial object info:", error);
@@ -135,19 +160,20 @@ export async function getCelestialObjectSound(
   objectName: string
 ): Promise<string | null> {
   try {
-    const response = await fetch(
-      `https://images-assets.nasa.gov/audio/search?q=${encodeURIComponent(
-        objectName
-      )}&media_type=audio`
-    );
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    const data = await response.json();
+    const searchUrl = `${NASA_API_BASE}/search?q=${encodeURIComponent(
+      objectName
+    )}&media_type=audio`;
+    const data = await fetchWithErrorHandling(searchUrl);
 
     if (data.collection.items.length > 0) {
-      // نفترض أن أول ملف صوتي هو الأنسب
-      return data.collection.items[0].href;
+      const audioAssetData = await fetchWithErrorHandling(
+        `${NASA_API_BASE}/asset/${data.collection.items[0].data[0].nasa_id}`
+      );
+      return (
+        audioAssetData.collection.items.find((asset) =>
+          asset.href.endsWith(".mp3")
+        )?.href || null
+      );
     } else {
       console.log(`No sound found for ${objectName}`);
       return null;
@@ -155,5 +181,27 @@ export async function getCelestialObjectSound(
   } catch (error) {
     console.error(`Error fetching sound for ${objectName}:`, error);
     return null;
+  }
+}
+
+// New function to get a list of images for an album
+export async function getAlbumImages(
+  albumName: string,
+  page: number = 1,
+  pageSize: number = 100
+): Promise<string[]> {
+  try {
+    const albumUrl = `${NASA_API_BASE}/album/${encodeURIComponent(
+      albumName
+    )}?page=${page}&page_size=${pageSize}`;
+    const data = await fetchWithErrorHandling(albumUrl);
+
+    const images = data.collection.items.map((item) => item.links[0].href);
+    return images;
+  } catch (error) {
+    console.error(`Error fetching album images for ${albumName}:`, error);
+    throw new Error(
+      `Failed to fetch album images for ${albumName}: ${error.message}`
+    );
   }
 }
